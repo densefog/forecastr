@@ -9,15 +9,19 @@ defmodule Forecastr.Cache.Worker do
     GenServer.start_link(__MODULE__, %{name: worker_name}, opts)
   end
 
-  @spec get(atom(), String.t()) :: map() | nil
-  def get(name, query) do
-    GenServer.call(name, {:get, query})
+  @spec get(atom(), String.t(), String.t(), String.t()) :: map() | nil
+  def get(name, query, latitude \\ "", longitude \\ "") do
+    GenServer.call(name, {:get, "#{query}::#{latitude}::#{longitude}"})
   end
 
-  @spec set(atom(), String.t(), map()) :: :ok
-  def set(name, query, response) do
+  @spec set(atom(), String.t(), String.t(), String.t(), map()) :: :ok
+  def set(name, query, latitude \\ "", longitude \\ "", response) do
     expiration_minutes = Application.get_env(:forecastr, :ttl, 10 * 60_000)
-    GenServer.call(name, {:set, query, response, ttl: expiration_minutes})
+
+    GenServer.call(
+      name,
+      {:set, "#{query}::#{latitude}::#{longitude}", response, ttl: expiration_minutes}
+    )
   end
 
   # Server callbacks

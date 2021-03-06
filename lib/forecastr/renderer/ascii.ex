@@ -94,6 +94,25 @@ defmodule Forecastr.Renderer.ASCII do
     ]
   end
 
+  def render(
+        %{
+          "hourly" => hourly,
+          "coordinates" => %{"lat" => lat, "lon" => lon}
+        },
+        _output_type
+      )
+      when is_list(hourly) do
+    # TODO: align correctly tabular output when we have different ASCII art
+    # shapes
+    [
+      [
+        ~s(lat: #{lat}, lon: #{lon}\n),
+        "\n"
+      ]
+      | [hourly]
+    ]
+  end
+
   defp determine_max_length(ascii_list),
     do: ascii_list |> Stream.map(&String.length/1) |> Enum.max()
 

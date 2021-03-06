@@ -1,15 +1,17 @@
 defmodule Forecastr.OWM do
   @moduledoc false
 
-  @type when_to_forecast :: :today | :next_days
-  @spec weather(when_to_forecast, String.t(), map()) :: {:ok, map()} | {:error, atom()}
-  def weather(when_to_forecast, query, opts) do
-    endpoint = owm_api_endpoint(when_to_forecast)
-    fetch_weather_information(endpoint <> "?q=#{query}", opts)
+  @type when_to_forecast :: :today | :next_days | :hourly
+  @spec weather(when_to_forecast, String.t(), String.t(), String.t(), map()) ::
+          {:ok, map()} | {:error, atom()}
+  def weather(when_to_forecast, query, latitude \\ "", longitude \\ "", opts) do
+    endpoint = owm_api_endpoint(when_to_forecast, query, latitude, longitude)
+
+    fetch_weather_information(endpoint, opts)
   end
 
   @doc """
-  Normalize for today's weather or for the next 5 days weather
+  Normalize for today's weather, next 5 days weather, or hourly weather
   """
   @spec normalize(map()) :: {:ok, map()}
   def normalize(%{
@@ -47,6 +49,21 @@ defmodule Forecastr.OWM do
       |> add("country", country)
       |> add("coordinates", %{"lat" => lat, "lon" => lon})
       |> add("list", forecast_list |> Enum.map(&normalize_forecast_list/1))
+
+    {:ok, normalized}
+  end
+
+  # For Hourly
+  def normalize(%{
+        "hourly" => hourly,
+        "lat" => lat,
+        "lon" => lon
+      })
+      when is_list(hourly) do
+    normalized =
+      Map.new()
+      |> add("coordinates", %{"lat" => lat, "lon" => lon})
+      |> add("hourly", hourly |> Enum.map(&normalize_hourly_list/1))
 
     {:ok, normalized}
   end
@@ -94,12 +111,41 @@ defmodule Forecastr.OWM do
     |> add("dt", dt)
   end
 
+  defp normalize_hourly_list(
+         %{
+           "dt" => dt,
+           "pop" => prob_of_precipitation,
+           "temp" => temp,
+           "wind_speed" => wind_speed
+         } = hour
+       ) do
+    rain = get_in(hour, ["rain", "1h"])
+
+    %{
+      "dt" => dt,
+      "pop" => prob_of_precipitation,
+      "temp" => temp,
+      "wind_speed" => wind_speed,
+      "rain" => rain || 0
+    }
+  end
+
   defp add(map, key, value) do
     map
     |> Map.put(key, value)
   end
 
-  @spec owm_api_endpoint(when_to_forecast) :: String.t()
-  def owm_api_endpoint(:today), do: "api.openweathermap.org/data/2.5/weather"
-  def owm_api_endpoint(:next_days), do: "api.openweathermap.org/data/2.5/forecast"
+  @spec owm_api_endpoint(when_to_forecast, String.t(), String.t(), String.t()) :: String.t()
+  def owm_api_endpoint(:today, query, _latitude, _longitude),
+    do: "api.openweathermap.org/data/2.5/weather?q=#{query}"
+
+  def owm_api_endpoint(:next_days, query, _latitude, _longitude),
+    do: "api.openweathermap.org/data/2.5/forecast?q=#{query}"
+
+  # Does not have query parameter, uses lat lon
+  def owm_api_endpoint(:hourly, _query, latitude, longitude),
+    do:
+      "api.openweathermap.org/data/2.5/onecall?exclude=minutely,current,daily,alerts&lat=#{
+        latitude
+      }&lon=#{longitude}"
 end

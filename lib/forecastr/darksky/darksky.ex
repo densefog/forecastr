@@ -1,9 +1,10 @@
 defmodule Forecastr.Darksky do
   @moduledoc false
 
-  @type when_to_forecast :: :today | :next_days
-  @spec weather(when_to_forecast, String.t(), map()) :: {:ok, map()} | {:error, atom()}
-  def weather(when_to_forecast, query, opts) do
+  @type when_to_forecast :: :today | :next_days | :hourly
+  @spec weather(when_to_forecast, String.t(), String.t(), String.t(), map()) ::
+          {:ok, map()} | {:error, atom()}
+  def weather(when_to_forecast, query, _latitude, _longitude, opts) do
     endpoint = darksky_api_endpoint(when_to_forecast)
     params = convert_to_darksky_params(opts)
 
@@ -127,6 +128,9 @@ defmodule Forecastr.Darksky do
 
   def darksky_api_endpoint(:next_days),
     do: "https://api.darksky.net/forecast/#{Application.get_env(:forecastr, :appid)}"
+
+  def darksky_api_endpoint(:hourly),
+    do: raise("Hourly not implemented for DarkSky")
 
   defp convert_to_darksky_params(%{units: :imperial} = params), do: Map.put(params, :units, "us")
   defp convert_to_darksky_params(%{units: _} = params), do: Map.put(params, :units, "si")

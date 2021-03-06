@@ -12,6 +12,10 @@ defmodule Forecastr.Application do
       Supervisor.child_spec(
         {Forecastr.Cache.Worker, [name: Forecastr.Cache.NextDays]},
         id: Forecastr.Cache.NextDays
+      ),
+      Supervisor.child_spec(
+        {Forecastr.Cache.Worker, [name: Forecastr.Cache.Hourly]},
+        id: Forecastr.Cache.Hourly
       )
     ]
 
